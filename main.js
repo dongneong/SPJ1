@@ -13,22 +13,26 @@ var compression = require('compression');
 // 웹서버로 요청이 들어올때마다 타게되는 미들웨어
 app.use(bodyParser.urlencoded({ extended: false }));
 app.use(compression()); // 송수신되는 데이터량이 압축되어 굉장이 용량이 작아진다.
+app.use(function(request, response, next){
+  fs.readdir('./data', function(error, filelist){
+    request.list = filelist;
+    next();
+  })
+});
 
 app.get('/', (request, response) => {
-  fs.readdir('./data', function(error, filelist){
-          var title = 'Welcome';
-          var description = 'Hello, Node.js';
-          var list = template.list(filelist);
-          var html = template.HTML(title, list,
-            `<h2>${title}</h2>${description}`,
-            `<a href="/create">create</a>`
-          );
-          response.send(html);
-        });
+  var title = 'Welcome';
+  var description = 'Hello, Node.js';
+  var list = template.list(request.list);
+  var html = template.HTML(title, list,
+    `<h2>${title}</h2>${description}`,
+    `<a href="/create">create</a>`
+  );
+  response.send(html);
 });
 
 app.get('/page/:pageId', (request, response) => {
-  fs.readdir('./data', function(error, filelist){
+  console.log(request.list);
     var filteredId = path.parse(request.params.pageId).base;
     fs.readFile(`data/${filteredId}`, 'utf8', function(err, description){
       var title = request.params.pageId;
@@ -36,7 +40,7 @@ app.get('/page/:pageId', (request, response) => {
       var sanitizedDescription = sanitizeHtml(description, {
         allowedTags:['h1']
       });
-      var list = template.list(filelist);
+      var list = template.list(request.list);
       var html = template.HTML(sanitizedTitle, list,
         `<h2>${sanitizedTitle}</h2>${sanitizedDescription}`,
         ` <a href="/create">create</a>
@@ -48,13 +52,11 @@ app.get('/page/:pageId', (request, response) => {
       );
       response.send(html);
     });
-  });
 });
 
 app.get('/create', (request, response)=>{
-  fs.readdir('./data', function(error, filelist){
     var title = 'WEB - create';
-    var list = template.list(filelist);
+    var list = template.list(request.list);
     var html = template.HTML(title, list, `
       <form action="/create_process" method="post">
         <p><input type="text" name="title" placeholder="title"></p>
@@ -67,7 +69,6 @@ app.get('/create', (request, response)=>{
       </form>
     `, '');
     response.send(html);
-  });
 });
 
 app.post('/create_process', (request, response)=> {
@@ -92,11 +93,10 @@ app.post('/create_process', (request, response)=> {
 });
 
 app.get('/update/:pageId', (request, response)=> {
-  fs.readdir('./data', function(error, filelist){
     var filteredId = path.parse(request.params.pageId).base;
     fs.readFile(`data/${filteredId}`, 'utf8', function(err, description){
       var title = request.params.pageId;
-      var list = template.list(filelist);
+      var list = template.list(request.list);
       var html = template.HTML(title, list,
         `
         <form action="/update_process" method="post">
@@ -114,7 +114,6 @@ app.get('/update/:pageId', (request, response)=> {
       );
       response.send(html);
     });
-  });
 });
 
 app.post('/update_process', (request, response) => {
