@@ -6,6 +6,13 @@ var qs = require('querystring');
 var template = require('./lib/template.js');
 var path = require('path');
 var sanitizeHtml = require('sanitize-html');
+var bodyParser = require('body-parser');
+var compression = require('compression');
+
+
+// 웹서버로 요청이 들어올때마다 타게되는 미들웨어
+app.use(bodyParser.urlencoded({ extended: false }));
+app.use(compression()); // 송수신되는 데이터량이 압축되어 굉장이 용량이 작아진다.
 
 app.get('/', (request, response) => {
   fs.readdir('./data', function(error, filelist){
@@ -64,18 +71,24 @@ app.get('/create', (request, response)=>{
 });
 
 app.post('/create_process', (request, response)=> {
-  var body = '';
-  request.on('data', function(data){
-      body = body + data;
+  var post = request.body; // body-parser를 활용하여 body데이터 갖고오기...완전간편
+  var title = post.title;
+  var description = post.description;
+  fs.writeFile(`data/${title}`, description, 'utf8', function(err){
+    response.redirect(`/page/${title}`)
   });
-  request.on('end', function(){
-      var post = qs.parse(body);
-      var title = post.title;
-      var description = post.description;
-      fs.writeFile(`data/${title}`, description, 'utf8', function(err){
-        response.redirect(`/page/${title}`)
-      })
-  });
+  // var body = '';
+  // request.on('data', function(data){
+  //     body = body + data;
+  // });
+  // request.on('end', function(){
+  //     var post = qs.parse(body);
+  //     var title = post.title;
+  //     var description = post.description;
+  //     fs.writeFile(`data/${title}`, description, 'utf8', function(err){
+  //       response.redirect(`/page/${title}`)
+  //     })
+  // });
 });
 
 app.get('/update/:pageId', (request, response)=> {
@@ -105,36 +118,51 @@ app.get('/update/:pageId', (request, response)=> {
 });
 
 app.post('/update_process', (request, response) => {
-  var body = '';
-  request.on('data', function(data){
-      body = body + data;
+  var post = request.body;
+  var id = post.id;
+  var title = post.title;
+  var description = post.description;
+  fs.rename(`data/${id}`, `data/${title}`, function(error){
+    fs.writeFile(`data/${title}`, description, 'utf8', function(err){
+      response.redirect(`/page/${title}`)
+    })
   });
-  request.on('end', function(){
-      var post = qs.parse(body);
-      var id = post.id;
-      var title = post.title;
-      var description = post.description;
-      fs.rename(`data/${id}`, `data/${title}`, function(error){
-        fs.writeFile(`data/${title}`, description, 'utf8', function(err){
-          response.redirect(`/page/${title}`)
-        })
-      });
-  });
+  // var body = '';
+  // request.on('data', function(data){
+  //     body = body + data;
+  // });
+  // request.on('end', function(){
+  //     var post = qs.parse(body);
+  //     var id = post.id;
+  //     var title = post.title;
+  //     var description = post.description;
+  //     fs.rename(`data/${id}`, `data/${title}`, function(error){
+  //       fs.writeFile(`data/${title}`, description, 'utf8', function(err){
+  //         response.redirect(`/page/${title}`)
+  //       })
+  //     });
+  // });
 });
 
 app.post('/delete_process', (request, response) => {
-  var body = '';
-  request.on('data', function(data){
-      body = body + data;
+  var post = request.body;
+  var id = post.id;
+  var filteredId = path.parse(id).base;
+  fs.unlink(`data/${filteredId}`, function(error){
+    response.redirect('/');
   });
-  request.on('end', function(){
-      var post = qs.parse(body);
-      var id = post.id;
-      var filteredId = path.parse(id).base;
-      fs.unlink(`data/${filteredId}`, function(error){
-        response.redirect('/');
-      })
-  });
+  // var body = '';
+  // request.on('data', function(data){
+  //     body = body + data;
+  // });
+  // request.on('end', function(){
+  //     var post = qs.parse(body);
+  //     var id = post.id;
+  //     var filteredId = path.parse(id).base;
+  //     fs.unlink(`data/${filteredId}`, function(error){
+  //       response.redirect('/');
+  //     })
+  // });
 });
 
 app.listen(3000, (req,res)=>{
