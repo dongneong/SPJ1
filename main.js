@@ -11,6 +11,7 @@ var compression = require('compression');
 
 
 // 웹서버로 요청이 들어올때마다 타게되는 미들웨어
+app.use(express.static('public')); // 정적파일 사용하기 위해 추가하는 미들웨어
 app.use(bodyParser.urlencoded({ extended: false }));
 app.use(compression()); // 송수신되는 데이터량이 압축되어 굉장이 용량이 작아진다.
 app.use(function(request, response, next){
@@ -25,13 +26,16 @@ app.get('/', (request, response) => {
   var description = 'Hello, Node.js';
   var list = template.list(request.list);
   var html = template.HTML(title, list,
-    `<h2>${title}</h2>${description}`,
-    `<a href="/create">create</a>`
+    `<h2>${title}</h2>${description}
+    <img src="/images/korea.jpg" style="width:300px; display:block; margin-top:10px;"/>
+    `
+    ,
+    `<a href="/topic/create">create</a>`
   );
   response.send(html);
 });
 
-app.get('/page/:pageId', (request, response) => {
+app.get('/topic/page/:pageId', (request, response) => {
   console.log(request.list);
     var filteredId = path.parse(request.params.pageId).base;
     fs.readFile(`data/${filteredId}`, 'utf8', function(err, description){
@@ -43,9 +47,9 @@ app.get('/page/:pageId', (request, response) => {
       var list = template.list(request.list);
       var html = template.HTML(sanitizedTitle, list,
         `<h2>${sanitizedTitle}</h2>${sanitizedDescription}`,
-        ` <a href="/create">create</a>
-          <a href="/update/${sanitizedTitle}">update</a>
-          <form action="/delete_process" method="post">
+        ` <a href="/topic/create">create</a>
+          <a href="/topic/update/${sanitizedTitle}">update</a>
+          <form action="/topic/delete_process" method="post">
             <input type="hidden" name="id" value="${sanitizedTitle}">
             <input type="submit" value="delete">
           </form>`
@@ -54,11 +58,11 @@ app.get('/page/:pageId', (request, response) => {
     });
 });
 
-app.get('/create', (request, response)=>{
+app.get('/topic/create', (request, response)=>{
     var title = 'WEB - create';
     var list = template.list(request.list);
     var html = template.HTML(title, list, `
-      <form action="/create_process" method="post">
+      <form action="/topic/create_process" method="post">
         <p><input type="text" name="title" placeholder="title"></p>
         <p>
           <textarea name="description" placeholder="description"></textarea>
@@ -71,12 +75,12 @@ app.get('/create', (request, response)=>{
     response.send(html);
 });
 
-app.post('/create_process', (request, response)=> {
+app.post('/topic/create_process', (request, response)=> {
   var post = request.body; // body-parser를 활용하여 body데이터 갖고오기...완전간편
   var title = post.title;
   var description = post.description;
   fs.writeFile(`data/${title}`, description, 'utf8', function(err){
-    response.redirect(`/page/${title}`)
+    response.redirect(`/topic/page/${title}`)
   });
   // var body = '';
   // request.on('data', function(data){
@@ -92,14 +96,14 @@ app.post('/create_process', (request, response)=> {
   // });
 });
 
-app.get('/update/:pageId', (request, response)=> {
+app.get('/topic/update/:pageId', (request, response)=> {
     var filteredId = path.parse(request.params.pageId).base;
     fs.readFile(`data/${filteredId}`, 'utf8', function(err, description){
       var title = request.params.pageId;
       var list = template.list(request.list);
       var html = template.HTML(title, list,
         `
-        <form action="/update_process" method="post">
+        <form action="/topic/update_process" method="post">
           <input type="hidden" name="id" value="${title}">
           <p><input type="text" name="title" placeholder="title" value="${title}"></p>
           <p>
@@ -110,20 +114,20 @@ app.get('/update/:pageId', (request, response)=> {
           </p>
         </form>
         `,
-        `<a href="/create">create</a> <a href="/update?id=${title}">update</a>`
+        `<a href="/topic/create">create</a> <a href="/update?id=${title}">update</a>`
       );
       response.send(html);
     });
 });
 
-app.post('/update_process', (request, response) => {
+app.post('/topic/update_process', (request, response) => {
   var post = request.body;
   var id = post.id;
   var title = post.title;
   var description = post.description;
   fs.rename(`data/${id}`, `data/${title}`, function(error){
     fs.writeFile(`data/${title}`, description, 'utf8', function(err){
-      response.redirect(`/page/${title}`)
+      response.redirect(`/topic/page/${title}`)
     })
   });
   // var body = '';
@@ -143,7 +147,7 @@ app.post('/update_process', (request, response) => {
   // });
 });
 
-app.post('/delete_process', (request, response) => {
+app.post('/topic/delete_process', (request, response) => {
   var post = request.body;
   var id = post.id;
   var filteredId = path.parse(id).base;
@@ -163,6 +167,10 @@ app.post('/delete_process', (request, response) => {
   //     })
   // });
 });
+
+// app.use(function(reqeust, response, next) {
+//   response.status(404).send("Sorry, 404 NOT FOUND...");
+// });
 
 app.listen(3000, (req,res)=>{
   console.log('waiting for connection on 3000...');
